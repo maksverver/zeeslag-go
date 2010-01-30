@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"malloc"
 	"io"
 	"strconv"
 	"time"
@@ -63,12 +64,14 @@ func PlayerServer(conn *http.Conn, request *http.Request) {
 				parameters += (name + "=" + value[0])
 			}
 		}
-		delay := fmt.Sprintf("\t(%.3fs)", float64(time.Nanoseconds()-nsBegin)/1e9)
+		alloc := fmt.Sprintf("\t%.3fMB", float64(malloc.GetStats().Alloc)/(1<<20))
+		delay := fmt.Sprintf("\t%.3fs", float64(time.Nanoseconds()-nsBegin)/1e9)
 		log.Stdout(
-			"\t("+conn.RemoteAddr+")",
+			"\t"+conn.RemoteAddr,
 			"\t"+parameters,
 			"\t"+fmt.Sprintf("%v", succeeded),
 			"\t"+response,
+			"\t"+alloc,
 			"\t"+delay)
 	}
 
@@ -79,6 +82,9 @@ func PlayerServer(conn *http.Conn, request *http.Request) {
 		response = "ERROR: " + response + "!"
 	}
 	io.WriteString(conn, response)
+
+	// HACK: run GC to ensure memory gets freed, or we will get killed!
+	malloc.GC()
 }
 
 func main() {
