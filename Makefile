@@ -1,16 +1,19 @@
-X=6 
-CL=6l
+X=6
+C=6g
+L=6l
 
-%.8: %.go; 8g -o $@ $<
-%.6: %.go; 6g -o $@ $<
-
-OBJS=game.$X io.$X solver.$X test.$X server.$X
 BINS=test server
+OBJS=game.$X test.$X server.$X
 
-all: $(OBJS) $(BINS)
 
-test: $(OBJS); $(CL) -o $@ test.$X
-server: $(OBJS); $(CL) -o $@ server.$X
+all: $(BINS)
+
+game.$X:     game.go io.go player.go solver.go;  $C -o $@ $^
+test.$X:     test.go;                            $C -o $@ $<
+server.$X:   server.go;                          $C -o $@ $<
+
+test:    game.$X test.$X;    $L -o $@ test.$X
+server:  game.$X server.$X;  $L -o $@ server.$X
 
 clean: ; rm -f $(OBJS)
 distclean: clean; rm -f $(BINS)

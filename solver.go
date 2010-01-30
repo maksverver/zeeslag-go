@@ -1,8 +1,4 @@
-package solver
-
-import "./game"
-
-const Height, Width = game.FieldHeight, game.FieldWidth
+package game
 
 // min returns the minimum value of its two arguments
 func min(a, b int) int {
@@ -30,16 +26,16 @@ func ifc(c bool, a, b int) int {
 
 // GenerateSolutions writes all solution fields for the given row and column
 // counts to a channel (and then a nil value to terminate the list).
-func GenerateSolutions(rows game.RowCounts, cols game.ColCounts, ch chan *game.Field) {
-	var ships game.Field
-	var blocked [Height][Width]int
+func GenerateSolutions(rows RowCounts, cols ColCounts, ch chan *Field) {
+	var ships Field
+	var blocked [FieldHeight][FieldWidth]int
 	var placeShips func(kind, unit, start_r, start_c int)
 
 	placeShips = func(kind, unit, start_r, start_c int) {
 		// Check if we have a ship to place next:
-		if unit == game.ShipTypes[kind].Units {
+		if unit == ShipTypes[kind].Units {
 			kind++
-			if kind == len(game.ShipTypes) {
+			if kind == len(ShipTypes) {
 				result := ships
 				ch <- &result
 				return
@@ -50,10 +46,10 @@ func GenerateSolutions(rows game.RowCounts, cols game.ColCounts, ch chan *game.F
 		}
 
 		for dir := 0; dir < 2; dir++ {
-			h := dir*(game.ShipTypes[kind].Length-1) + 1
-			w := (1-dir)*(game.ShipTypes[kind].Length-1) + 1
+			h := dir*(ShipTypes[kind].Length-1) + 1
+			w := (1-dir)*(ShipTypes[kind].Length-1) + 1
 
-			for r1 := start_r; r1 <= Height-h; r1++ {
+			for r1 := start_r; r1 <= FieldHeight-h; r1++ {
 				if rows[r1] < w {
 					continue
 				}
@@ -63,7 +59,7 @@ func GenerateSolutions(rows game.RowCounts, cols game.ColCounts, ch chan *game.F
 					c1 = start_c
 				}
 			loop:
-				for ; c1 <= Width-w; c1++ {
+				for ; c1 <= FieldWidth-w; c1++ {
 
 					if cols[c1] < h || blocked[r1][c1] > 0 {
 						continue
@@ -71,7 +67,7 @@ func GenerateSolutions(rows game.RowCounts, cols game.ColCounts, ch chan *game.F
 
 					// Check if space is available here:
 					r2, c2 := r1+h, c1+w
-					if c2 > Width || r2 > Height {
+					if c2 > FieldWidth || r2 > FieldHeight {
 						continue
 					}
 					for r := r1; r < r2; r++ {
@@ -95,8 +91,8 @@ func GenerateSolutions(rows game.RowCounts, cols game.ColCounts, ch chan *game.F
 					// Calculate area blocked by the ship:
 					br1 := max(0, r1-1)
 					bc1 := max(0, c1-1)
-					br2 := min(Height, r2+1)
-					bc2 := min(Width, c2+1)
+					br2 := min(FieldHeight, r2+1)
+					bc2 := min(FieldWidth, c2+1)
 
 					// Claim space
 					for r := r1; r < r2; r++ {
@@ -118,14 +114,16 @@ func GenerateSolutions(rows game.RowCounts, cols game.ColCounts, ch chan *game.F
 
 					// Quick check to see if field is still solvable:
 					for r := br1; r < br2; r++ {
-						if rows[r] == 1 && (r == 0 || rows[r-1] == 0) &&
-							(r == Height-1 || rows[r+1] == 0) {
+						if rows[r] == 1 &&
+							(r == 0 || rows[r-1] == 0) &&
+							(r == FieldHeight-1 || rows[r+1] == 0) {
 							goto unsolvable
 						}
 					}
 					for c := bc1; c < bc2; c++ {
-						if cols[c] == 1 && (c == 0 || cols[c-1] == 0) &&
-							(c == Width-1 || cols[c+1] == 0) {
+						if cols[c] == 1 &&
+							(c == 0 || cols[c-1] == 0) &&
+							(c == FieldWidth-1 || cols[c+1] == 0) {
 							goto unsolvable
 						}
 					}
@@ -160,4 +158,22 @@ func GenerateSolutions(rows game.RowCounts, cols game.ColCounts, ch chan *game.F
 	// Generate all solutions, then write a nil to signal end of the list:
 	placeShips(0, 0, 0, 0)
 	ch <- nil
+}
+
+
+// Returns a slice with all solutions for the given row/column counts
+func ListSolutions(rows RowCounts, cols ColCounts) (solutions []Field) {
+	ch := make(chan *Field)
+	go GenerateSolutions(rows, cols, ch)
+	for sol := <-ch; sol != nil; sol = <-ch {
+		i := len(solutions)
+		if i == cap(solutions) {
+			tmp := make([]Field, i, max(2*i, 16))
+			copy(tmp, solutions)
+			solutions = tmp
+		}
+		solutions = solutions[0 : i+1]
+		solutions[i] = *sol
+	}
+	return
 }

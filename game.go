@@ -10,6 +10,11 @@ type ShipType struct {
 	Length, Units int
 }
 
+type Shot struct {
+	R, C int
+	Hit  bool
+}
+
 var ShipTypes = [4]ShipType{
 	ShipType{Length: 5, Units: 1},
 	ShipType{Length: 4, Units: 2},
