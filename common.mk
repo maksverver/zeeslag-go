@@ -1,10 +1,5 @@
-X=6
-C=6g
-L=6l
-
 BINS=test server
 OBJS=game.$X test.$X server.$X
-
 
 all: $(BINS)
 

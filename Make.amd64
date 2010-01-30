@@ -1,0 +1,4 @@
+X=6
+C=6g
+L=6l
+include common.mk
