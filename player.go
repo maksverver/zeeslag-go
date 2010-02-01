@@ -1,38 +1,15 @@
 package game
 
 import "rand"
-
-/*
-// Setup returns a random new field set-up
-// FIXME: generates weak-ish fields!
-func Setup() Field {
-	var total int
-	for _, t := range(ShipTypes) {
-		total += t.Length * t.Units
-	}
-	for {
-		var rows RowCounts
-		var cols ColCounts
-		for i := 0; i < total; i++ {
-			pos := rand.Intn(FieldHeight*FieldWidth)
-			cols[pos%FieldWidth]++
-			rows[pos/FieldWidth]++
-		}
-		solutions := ListSolutions(rows, cols)
-		if len(solutions) > 100 {
-			return solutions[rand.Intn(len(solutions))]
-		}
-	}
-	return Field{}
-}
-*/
+import "fmt"
 
 // Setup returns a random new field set-up
-func Setup() Field {
-	// FIXME: hard-code better template?
-	rows := RowCounts{0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5}
-	cols := ColCounts{0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
+func Setup() *Field {
+	// FIXME: template is hard-coded!
+	rows := RowCounts{0, 4, 0, 2, 0, 5, 0, 3, 0, 5, 0, 5, 0, 4, 0, 2}
+	cols := ColCounts{1, 2, 2, 3, 4, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 1}
 	solutions := ListSolutions(rows, cols)
+	fmt.Println(len(solutions))
 	return solutions[rand.Intn(len(solutions))]
 }
 
@@ -44,7 +21,6 @@ func matchShots(shots []Shot, field *Field) bool {
 	}
 	return true
 }
-
 
 // Shoot returns the coordinates of an unoccupied cell to fire at
 func Shoot(rows RowCounts, cols ColCounts, shots []Shot) (shootR, shootC int) {

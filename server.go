@@ -10,6 +10,7 @@ import (
 	"io"
 	"strconv"
 	"time"
+	"rand"
 )
 
 func PlayerServer(conn *http.Conn, request *http.Request) {
@@ -26,7 +27,7 @@ func PlayerServer(conn *http.Conn, request *http.Request) {
 		switch action[0] {
 		case "Ships":
 			field := game.Setup()
-			response = game.FormatShips(&field)
+			response = game.FormatShips(field)
 			succeeded = true
 		case "Fire":
 			if rows, ok := request.Form["Rows"]; !ok {
@@ -88,6 +89,9 @@ func PlayerServer(conn *http.Conn, request *http.Request) {
 }
 
 func main() {
+	// Seed random-number generator
+	rand.Seed(time.Nanoseconds())
+
 	// Parse command line arguments:
 	host := flag.String("h", "", "hostname to bind")
 	port := flag.Int("p", 14000, "port to bind")

@@ -2,47 +2,59 @@ package main
 
 import (
 	"./game"
+	"flag"
 	"fmt"
+	"rand"
+	"time"
 )
 
 func main() {
+	// Parse command line arguments:
+	setupFlag := flag.Bool("Setup", false, "Generate a starting field")
+	shipsFlag := flag.String("Ships", "", "Solve a field described as a list of ships")
+	rowsFlag := flag.String("Rows", "", "Solve a field with the given row counts (requires -Cols as well)")
+	colsFlag := flag.String("Cols", "", "Solve a field with the given column counts (requires -Rows as well)")
+	seedFlag := flag.Int64("Seed", 0, "Random seed (0 to pick at random)")
+	flag.Parse()
+
+	// Seed pseudo-random number generator:
+	if *seedFlag != 0 {
+		rand.Seed(*seedFlag)
+	} else {
+		rand.Seed(time.Nanoseconds())
+	}
 
 	var rows game.RowCounts
 	var cols game.ColCounts
 
-	const desc = "5HJ11.4HK16.4HF14.3HC8.3HI4.3HE1.2HO2.2HA5.2HF16.2HK6" // 6346 solutions
-	//const desc = "5HL2.4HF16.4HD13.3HD5.3HC11.3HM10.2VD8.2HJ9.2HA15.2HH3"  // 1966 solutions
-
-	/*
-		if field := game.ParseShips(desc); field == nil {
-			fmt.Println("Couldn't parse field description:", desc)
+	if *shipsFlag != "" {
+		// Parse row/column counts from Ships flag:
+		if field := game.ParseShips(*shipsFlag); field == nil {
+			fmt.Println("Couldn't parse field description:", *shipsFlag)
 		} else {
 			fmt.Print("Parsed field:\n", field)
 			rows, cols = game.CountShips(field)
 		}
-	*/
-
-	/* HARD. Took 6s, or 6.2s after adding some more parameters. 190k solutions? */
-	const rowsDesc = "1.2.2.2.2.2.2.3.2.2.2.2.1.2.2.1"
-	const colsDesc = "2.4.0.5.0.4.0.5.0.7.0.3.0.0.0.0"
-
-	/* MEDIUM. Takes about 220ms. 11,124 solutions
-	const rowsDesc = "2.0.1.3.1.2.4.0.6.0.3.0.0.5.0.3"
-	const colsDesc = "4.1.1.2.1.1.2.2.2.2.3.2.2.2.2.1"
-	*/
-
-	if rowsPtr := game.ParseRows(rowsDesc); rowsPtr == nil {
-		fmt.Println("Couldn't parse row counts:", rowsDesc)
-	} else {
-		if colsPtr := game.ParseCols(colsDesc); colsPtr == nil {
-			fmt.Println("Couldn't parse column counts:", rowsDesc)
+	} else if *rowsFlag != "" || *colsFlag != "" {
+		// Parse row/column counts from Rows and Cols flags:
+		if rowsPtr := game.ParseRows(*rowsFlag); rowsPtr == nil {
+			fmt.Println("Couldn't parse row counts:", *rowsFlag)
 		} else {
-			rows = *rowsPtr
-			cols = *colsPtr
+			if colsPtr := game.ParseCols(*colsFlag); colsPtr == nil {
+				fmt.Println("Couldn't parse column counts:", *colsFlag)
+			} else {
+				rows = *rowsPtr
+				cols = *colsPtr
+			}
 		}
+	} else if *setupFlag {
+		// Set up a random field:
+		fmt.Println(game.FormatShips(game.Setup()))
+		return
+	} else {
+		flag.PrintDefaults()
+		return
 	}
-
-	//fmt.Println("Shots", game.ParseShots("WM15.SE15.SD15"))
 
 	fmt.Println("Rows:", rows)
 	fmt.Println("Cols:", cols)

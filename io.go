@@ -115,6 +115,15 @@ func ParseCols(desc string) *ColCounts {
 	return &res
 }
 
+// FormatCounts formats row or column counts into a canonical string format
+func FormatCounts(counts []int) string {
+	parts := make([]string, len(counts))
+	for i, v := range (counts) {
+		parts[i] = strconv.Itoa(v)
+	}
+	return strings.Join(parts, ".")
+}
+
 // ParseShots parses a canonical description of shots
 func ParseShots(desc string) []Shot {
 	if desc == "" {

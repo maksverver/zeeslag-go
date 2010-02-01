@@ -1,30 +1,8 @@
 package game
 
+import "./util"
+
 type intField [FieldHeight][FieldWidth]int
-
-// min returns the minimum value of its two arguments
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// max returns the maximum value of its two arguments
-func max(a, b int) int {
-	if a < b {
-		return b
-	}
-	return a
-}
-
-// ifc returns the a or b argument, depending on whether c is true or false
-func ifc(c bool, a, b int) int {
-	if c {
-		return a
-	}
-	return b
-}
 
 // placeShips is the solver's workhorse. It takes a partially solved field with
 // ships, a field of blocked cells, row and column counts, the ship type to
@@ -65,13 +43,8 @@ func placeShips(rows []int, cols []int, ships *Field, blocked *intField, kind, u
 			if rows[r1] < w {
 				continue
 			}
-
-			c1 := 0
-			if r1 == start_r {
-				c1 = start_c
-			}
 		loop:
-			for ; c1 <= FieldWidth-w; c1++ {
+			for c1 := util.Ifc(r1 == start_r, start_c, 0); c1 <= FieldWidth-w; c1++ {
 
 				if cols[c1] < h || blocked[r1][c1] > 0 {
 					continue
@@ -101,10 +74,10 @@ func placeShips(rows []int, cols []int, ships *Field, blocked *intField, kind, u
 				}
 
 				// Calculate area blocked by the ship:
-				br1 := max(0, r1-1)
-				bc1 := max(0, c1-1)
-				br2 := min(FieldHeight, r2+1)
-				bc2 := min(FieldWidth, c2+1)
+				br1 := util.Max(0, r1-1)
+				bc1 := util.Max(0, c1-1)
+				br2 := util.Min(FieldHeight, r2+1)
+				bc2 := util.Min(FieldWidth, c2+1)
 
 				// Claim space
 				for r := r1; r < r2; r++ {
@@ -198,17 +171,17 @@ func GenerateSolutions(rows RowCounts, cols ColCounts) chan *Field {
 }
 
 // ListSolutions returns a slice with all solutions for the given field counts
-func ListSolutions(rows RowCounts, cols ColCounts) (solutions []Field) {
+func ListSolutions(rows RowCounts, cols ColCounts) (solutions []*Field) {
 	ch := GenerateSolutions(rows, cols)
 	for sol := <-ch; sol != nil; sol = <-ch {
 		i := len(solutions)
 		if i == cap(solutions) {
-			tmp := make([]Field, i, max(2*i, 16))
+			tmp := make([]*Field, i, util.Max(2*i, 16))
 			copy(tmp, solutions)
 			solutions = tmp
 		}
 		solutions = solutions[0 : i+1]
-		solutions[i] = *sol
+		solutions[i] = sol
 	}
 	return
 }
