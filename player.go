@@ -29,6 +29,7 @@ func Setup() Field {
 
 // Setup returns a random new field set-up
 func Setup() Field {
+	// FIXME: hard-code better template?
 	rows := RowCounts{0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5}
 	cols := ColCounts{0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
 	solutions := ListSolutions(rows, cols)
@@ -37,7 +38,7 @@ func Setup() Field {
 
 func matchShots(shots []Shot, field *Field) bool {
 	for _, shot := range (shots) {
-		if (*field)[shot.R][shot.C] != shot.Hit {
+		if field[shot.R][shot.C] != shot.Hit {
 			return false
 		}
 	}
@@ -49,8 +50,7 @@ func matchShots(shots []Shot, field *Field) bool {
 func Shoot(rows RowCounts, cols ColCounts, shots []Shot) (shootR, shootC int) {
 
 	// Generate solutions
-	ch := make(chan *Field)
-	go GenerateSolutions(rows, cols, ch)
+	ch := GenerateSolutions(rows, cols)
 
 	// Mark cells we've shot at before
 	var shot Field
