@@ -32,7 +32,7 @@ func Shoot(rows RowCounts, cols ColCounts, shots []Shot) (shootR, shootC int) {
 
 	// Count how often each cell is hit:
 	var hits [FieldHeight][FieldWidth]int
-	for _, sol := range(solutions) {
+	for _, sol := range (solutions) {
 		if matchShots(shots, sol) {
 			for r, row := range (*sol) {
 				for c, hit := range (row) {

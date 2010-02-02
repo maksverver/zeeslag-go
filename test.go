@@ -59,8 +59,8 @@ func main() {
 		flag.PrintDefaults()
 		return
 	}
-	
-	if (*shotsFlag == "-") {
+
+	if *shotsFlag == "-" {
 		// No shots passed; just print number of solutions
 		fmt.Println("Rows:", game.FormatCounts(&rows))
 		fmt.Println("Cols:", game.FormatCounts(&cols))

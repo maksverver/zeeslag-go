@@ -6,20 +6,12 @@ type Field [FieldHeight][FieldWidth]bool
 type RowCounts [FieldHeight]int
 type ColCounts [FieldWidth]int
 
-type ShipType struct {
-	Length, Units int
-}
-
 type Shot struct {
 	R, C int
 	Hit  bool
 }
 
-var ShipTypes = [4]ShipType{
-	ShipType{Length: 5, Units: 1},
-	ShipType{Length: 4, Units: 2},
-	ShipType{Length: 3, Units: 3},
-	ShipType{Length: 2, Units: 4}}
+var ShipLengths = [10]int{5, 4, 4, 3, 3, 3, 2, 2, 2, 2}
 
 // CountShips computes the per row and column counts of ships in a field.
 func CountShips(field *Field) (rows RowCounts, cols ColCounts) {

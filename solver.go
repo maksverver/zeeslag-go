@@ -1,52 +1,65 @@
 package game
 
+// The main solver for the game is implemented here, where solving means to
+// find all fields that satisfy a given pair of row and column counts. These
+// solutions are used to determine the firing strategy.
+
 import "./util"
 
-type intField [FieldHeight][FieldWidth]int
+// solverstate describes a partial solution, used by placeShips:
+type solverState struct {
+	rows    RowCounts
+	cols    ColCounts
+	ships   Field
+	blocked [FieldHeight][FieldWidth]int
+	results chan *Field
+}
+
+// Returns a new copy of a partial solution. The only reason that this is in a
+// separate function, is that inlining it into placeShips significantly reduces
+// performance. (Probably a compiler bug.)
+func copyState(ss *solverState) *solverState {
+	copy := *ss
+	return &copy
+}
 
 // placeShips is the solver's workhorse. It takes a partially solved field with
-// ships, a field of blocked cells, row and column counts, the ship type to
-// place (in kind) and how many have been place of this type (unit), and where
-// the last ship was placed (start_r, start_c), and then computes all remaining
-// solutions to the grid, which are sent to the results channel.
+// ships, a field of blocked cells, row and column counts, the next ship to
+// place, and where the last ship was placed (start_r, start_c), and then
+// computes all remaining solutions to the grid, which are sent to the results
+// channel.
 //
 // N.B. this routine should not return before all results from its subproblems
 // have been sent to the results channel. Specifically, if the routine spawns
 // new goroutines, it should wait for them to finish before returning!
-func placeShips(rows []int, cols []int, ships *Field, blocked *intField, kind, unit, start_r, start_c int, results chan *Field, notify chan int) {
-	// Check if we have a ship to place next:
-	if unit == ShipTypes[kind].Units {
-		kind++
-		if kind == len(ShipTypes) {
-			result := *ships
-			results <- &result
-			return
-		}
+func placeShips(ss *solverState, ship, start_r, start_c int, notify chan int) {
+
+	// Check if we need to restart placing ship at the top left corner:
+	if ship > 0 && ShipLengths[ship] != ShipLengths[ship-1] {
 		start_r = 0
 		start_c = 0
-		unit = 0
 	}
 
 	// Prepare to spawn child goroutines for solving subproblems in parallel:
 	var childNotify chan int
 	var children int
-	if kind < 1 { // HEURISTIC: spawn children for the toplevel ship only
+	if ship < 1 { // HEURISTIC: spawn children for the toplevel ship only
 		childNotify = make(chan int, 20) // expect about 20 valid placements
 	}
 
 	// Search over all remaining positions for this type of ship:
 	for dir := 0; dir < 2; dir++ {
-		h := dir*(ShipTypes[kind].Length-1) + 1
-		w := (1-dir)*(ShipTypes[kind].Length-1) + 1
+		h := dir*(ShipLengths[ship]-1) + 1
+		w := (1-dir)*(ShipLengths[ship]-1) + 1
 
 		for r1 := start_r; r1 <= FieldHeight-h; r1++ {
-			if rows[r1] < w {
+			if ss.rows[r1] < w {
 				continue
 			}
 		loop:
 			for c1 := util.Ifc(r1 == start_r, start_c, 0); c1 <= FieldWidth-w; c1++ {
 
-				if cols[c1] < h || blocked[r1][c1] > 0 {
+				if ss.cols[c1] < h || ss.blocked[r1][c1] > 0 {
 					continue
 				}
 
@@ -56,18 +69,18 @@ func placeShips(rows []int, cols []int, ships *Field, blocked *intField, kind, u
 					continue
 				}
 				for r := r1; r < r2; r++ {
-					if rows[r] < w {
+					if ss.rows[r] < w {
 						continue loop
 					}
 				}
 				for c := c1; c < c2; c++ {
-					if cols[c] < h {
+					if ss.cols[c] < h {
 						continue loop
 					}
 				}
 				for r := r1; r < r2; r++ {
 					for c := c1; c < c2; c++ {
-						if blocked[r][c] > 0 {
+						if ss.blocked[r][c] > 0 {
 							continue loop
 						}
 					}
@@ -81,81 +94,76 @@ func placeShips(rows []int, cols []int, ships *Field, blocked *intField, kind, u
 
 				// Claim space
 				for r := r1; r < r2; r++ {
-					rows[r] -= w
+					ss.rows[r] -= w
 				}
 				for c := c1; c < c2; c++ {
-					cols[c] -= h
+					ss.cols[c] -= h
 				}
 				for r := r1; r < r2; r++ {
 					for c := c1; c < c2; c++ {
-						ships[r][c] = true
+						ss.ships[r][c] = true
 					}
 				}
 				for r := br1; r < br2; r++ {
 					for c := bc1; c < bc2; c++ {
-						blocked[r][c]++
+						ss.blocked[r][c]++
 					}
 				}
 
 				// Quick check to see if field is still solvable:
 				for r := br1; r < br2; r++ {
-					if rows[r] == 1 &&
-						(r == 0 || rows[r-1] == 0) &&
-						(r == FieldHeight-1 || rows[r+1] == 0) {
+					if ss.rows[r] == 1 &&
+						(r == 0 || ss.rows[r-1] == 0) &&
+						(r == FieldHeight-1 || ss.rows[r+1] == 0) {
 						goto unsolvable
 					}
 				}
 				for c := bc1; c < bc2; c++ {
-					if cols[c] == 1 &&
-						(c == 0 || cols[c-1] == 0) &&
-						(c == FieldWidth-1 || cols[c+1] == 0) {
+					if ss.cols[c] == 1 &&
+						(c == 0 || ss.cols[c-1] == 0) &&
+						(c == FieldWidth-1 || ss.cols[c+1] == 0) {
 						goto unsolvable
 					}
 				}
 
 				// Solve recursively
-				if childNotify == nil {
-					placeShips(rows, cols, ships, blocked, kind, unit+1, r1, bc2, results, nil)
+				if ship+1 == len(ShipLengths) {
+					result := ss.ships // make a copy
+					ss.results <- &result
+				} else if childNotify == nil {
+					placeShips(ss, ship+1, r1, bc2, nil)
 				} else {
-					var rowsCopy RowCounts
-					var colsCopy ColCounts
-					copy(&rowsCopy, rows)
-					copy(&colsCopy, cols)
-					shipsCopy := *ships
-					blockedCopy := *blocked
-					go placeShips(&rowsCopy, &colsCopy, &shipsCopy, &blockedCopy, kind, unit+1, r1, bc2, results, childNotify)
+					go placeShips(copyState(ss), ship+1, r1, bc2, childNotify)
 					children++
 				}
 
-			unsolvable:
-
 				// Return claimed space
+			unsolvable:
 				for r := r1; r < r2; r++ {
-					rows[r] += w
+					ss.rows[r] += w
 				}
 				for c := c1; c < c2; c++ {
-					cols[c] += h
+					ss.cols[c] += h
 				}
 				for r := r1; r < r2; r++ {
 					for c := c1; c < c2; c++ {
-						ships[r][c] = false
+						ss.ships[r][c] = false
 					}
 				}
 				for r := br1; r < br2; r++ {
 					for c := bc1; c < bc2; c++ {
-						blocked[r][c]--
+						ss.blocked[r][c]--
 					}
 				}
 			}
 		}
 	}
 
-	// Wait for my children to finish, then notify my parent I'm done:
 	for ; children > 0; children-- {
-		<-childNotify
+		<-childNotify  // wait for child to finish
 	}
 	if notify != nil {
-		notify <- 1
+		notify <- 1  // notify parent I'm done
 	}
 }
 
@@ -164,7 +172,8 @@ func placeShips(rows []int, cols []int, ships *Field, blocked *intField, kind, u
 func GenerateSolutions(rows RowCounts, cols ColCounts) chan *Field {
 	results := make(chan *Field, 1000) // expect a lot of solutions
 	go func() {
-		placeShips(&rows, &cols, &Field{}, &intField{}, 0, 0, 0, 0, results, nil)
+		state := solverState{rows: rows, cols: cols, results: results}
+		placeShips(&state, 0, 0, 0, nil)
 		results <- nil
 	}()
 	return results

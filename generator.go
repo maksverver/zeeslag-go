@@ -18,44 +18,42 @@ const minDifficulty = 40000
 // Generates a random field by placing each ship at a random location.
 func GenerateField(rng *rand.Rand) (field game.Field) {
 	var blocked [game.FieldHeight][game.FieldWidth]bool
-	for kind := 0; kind < len(game.ShipTypes); kind++ {
-		length := game.ShipTypes[kind].Length
-		for unit := 0; unit < game.ShipTypes[kind].Units; unit++ {
-		retry:
-			for {
-				r1 := rng.Intn(game.FieldHeight)
-				c1 := rng.Intn(game.FieldWidth)
-				dir := rng.Intn(2)
-				r2 := r1 + (length-1)*dir + 1
-				c2 := c1 + (length-1)*(1-dir) + 1
-				if r2 > game.FieldHeight || c2 > game.FieldWidth {
-					continue
-				}
-				for r := r1; r < r2; r++ {
-					for c := c1; c < c2; c++ {
-						if blocked[r][c] {
-							continue retry
-						}
-					}
-				}
-				// Place ship
-				for r := r1; r < r2; r++ {
-					for c := c1; c < c2; c++ {
-						field[r][c] = true
-					}
-				}
-				// Mark blocked fields
-				br1 := util.Max(0, r1-1)
-				bc1 := util.Max(0, c1-1)
-				br2 := util.Min(game.FieldHeight, r2+1)
-				bc2 := util.Min(game.FieldWidth, c2+1)
-				for r := br1; r < br2; r++ {
-					for c := bc1; c < bc2; c++ {
-						blocked[r][c] = true
-					}
-				}
-				break
+	for ship := 0; ship < len(game.ShipLengths); ship++ {
+		length := game.ShipLengths[ship]
+	retry:
+		for {
+			r1 := rng.Intn(game.FieldHeight)
+			c1 := rng.Intn(game.FieldWidth)
+			dir := rng.Intn(2)
+			r2 := r1 + (length-1)*dir + 1
+			c2 := c1 + (length-1)*(1-dir) + 1
+			if r2 > game.FieldHeight || c2 > game.FieldWidth {
+				continue
 			}
+			for r := r1; r < r2; r++ {
+				for c := c1; c < c2; c++ {
+					if blocked[r][c] {
+						continue retry
+					}
+				}
+			}
+			// Place ship
+			for r := r1; r < r2; r++ {
+				for c := c1; c < c2; c++ {
+					field[r][c] = true
+				}
+			}
+			// Mark blocked fields
+			br1 := util.Max(0, r1-1)
+			bc1 := util.Max(0, c1-1)
+			br2 := util.Min(game.FieldHeight, r2+1)
+			bc2 := util.Min(game.FieldWidth, c2+1)
+			for r := br1; r < br2; r++ {
+				for c := bc1; c < bc2; c++ {
+					blocked[r][c] = true
+				}
+			}
+			break
 		}
 	}
 	return
