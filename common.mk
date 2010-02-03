@@ -5,7 +5,7 @@ GAME_SRC=game.go io.go player.go solver.go
 all: $(BINS)
 
 util.$X: util.go; $C -o $@ $<
-game.$X: $(GAME_SRC) util.6;  $C -o $@ $(GAME_SRC)
+game.$X: $(GAME_SRC) util.$X;  $C -o $@ $(GAME_SRC)
 generator.$X: generator.go game.$X; $C -o $@ $<
 server.$X: server.go game.$X; $C -o $@ $<
 test.$X: test.go game.$X; $C -o $@ $<
