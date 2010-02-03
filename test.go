@@ -8,6 +8,33 @@ import (
 	"time"
 )
 
+func printIndent(indent int) {
+	for ; indent > 0; indent-- {
+		fmt.Print(" ")
+	}
+}
+
+func printStrategy(strategy *game.Strategy, indent int) {
+	printIndent(indent)
+	for i, f := range(strategy.Shots) {
+		if i > 0 {
+			fmt.Print(" ")
+		}
+		fmt.Print(game.FormatCoords(game.DecodeCoords(f)))
+	}
+	fmt.Println()
+	if strategy.IfHit != nil {
+		printIndent(indent)
+		fmt.Println("if hit:")
+		printStrategy(strategy.IfHit, indent + 4)
+	}
+	if strategy.IfMiss != nil {
+		printIndent(indent)
+		fmt.Println("if miss:")
+		printStrategy(strategy.IfMiss, indent + 4)
+	}
+}
+
 func main() {
 	// Parse command line arguments:
 	setupFlag := flag.Bool("Setup", false, "Generate a starting field")
@@ -53,7 +80,7 @@ func main() {
 	} else if *setupFlag {
 		// Set up a random field:
 		field := game.Setup()
-		fmt.Println("Random setup: " + game.FormatShips(field))
+		fmt.Println("Random setup:", game.FormatShips(field))
 		rows, cols = game.CountShips(field)
 	} else {
 		flag.PrintDefaults()
@@ -64,13 +91,11 @@ func main() {
 		// No shots passed; just print number of solutions
 		fmt.Println("Rows:", game.FormatCounts(&rows))
 		fmt.Println("Cols:", game.FormatCounts(&cols))
-		ch := game.GenerateSolutions(rows, cols)
-		cnt := 0
-		for sol := <-ch; sol != nil; sol = <-ch {
-			//fmt.Print("Solution:\n", sol)
-			cnt++
-		}
-		fmt.Println(cnt, "solutions found.")
+		solutions := game.ListSolutions(rows, cols)
+		fmt.Println(len(solutions), "solutions found.")
+		strategy := game.CreateStrategy(solutions)
+		fmt.Println("Expected score:", game.GetExpectedScore(strategy))
+		fmt.Println("Worst-case score:", game.GetMaximumScore(strategy))
 	} else {
 		shots := game.ParseShots(*shotsFlag)
 		if shots == nil {

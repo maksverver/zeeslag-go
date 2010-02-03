@@ -48,7 +48,14 @@ func PlayerServer(conn *http.Conn, request *http.Request) {
 				succeeded = true
 			}
 		case "Finished":
-			succeeded = true
+			if ships, ok := request.Form["Ships"]; !ok {
+				response = "no Ships parameter supplied"
+			} else if ships := game.ParseShips(ships[0]); ships == nil {
+				response = "invalid ship data"
+			} else {
+				game.PurgeCache(game.CountShips(ships))
+				succeeded = true
+			}
 		default:
 			response = "unknown Action value supplied"
 		}
@@ -80,12 +87,13 @@ func PlayerServer(conn *http.Conn, request *http.Request) {
 	// Write response to client:
 	conn.SetHeader("Content-Type", "text/plain")
 	if !succeeded {
-		response = "ERROR: " + response + "!"
+		response = "ERROR: " + response + "!\n"
 	}
 	io.WriteString(conn, response)
 
 	// HACK: run GC to ensure memory gets freed, or we will get killed!
-	malloc.GC()
+	// Use a goroutine to avoid delaying the query response.
+	go func() { malloc.GC() }()
 }
 
 func main() {
