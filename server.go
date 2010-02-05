@@ -56,6 +56,8 @@ func PlayerServer(conn *http.Conn, request *http.Request) {
 				game.PurgeCache(game.CountShips(ships))
 				succeeded = true
 			}
+			// Run GC here, to ensure we have free memory for the next game:
+			malloc.GC()
 		default:
 			response = "unknown Action value supplied"
 		}
@@ -83,17 +85,12 @@ func PlayerServer(conn *http.Conn, request *http.Request) {
 			"\t"+delay)
 	}
 
-
 	// Write response to client:
 	conn.SetHeader("Content-Type", "text/plain")
 	if !succeeded {
 		response = "ERROR: " + response + "!\n"
 	}
 	io.WriteString(conn, response)
-
-	// HACK: run GC to ensure memory gets freed, or we will get killed!
-	// Use a goroutine to avoid delaying the query response.
-	go func() { malloc.GC() }()
 }
 
 func main() {

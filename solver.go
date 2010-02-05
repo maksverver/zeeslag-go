@@ -24,6 +24,36 @@ func copyState(ss *solverState) *solverState {
 	return &copy
 }
 
+func checkCounts(counts []int) bool {
+	var total int
+	for _, count := range(counts) {
+		if count == 0 {
+			if total == 1 {
+				return false
+			}
+			total = 0
+		} else {
+			total += count
+		}
+	}
+	return total != 1
+}
+
+func checkCounts2(counts []int) bool {
+	var total int
+	for _, count := range(counts) {
+		if count == 0 {
+			if total%2 != 0 {
+				return false
+			}
+			total = 0
+		} else {
+			total += count
+		}
+	}
+	return total%2 == 0
+}
+
 // placeShips is the solver's workhorse. It takes a partially solved field with
 // ships, a field of blocked cells, row and column counts, the next ship to
 // place, and where the last ship was placed (start_r, start_c), and then
@@ -111,31 +141,28 @@ func placeShips(ss *solverState, ship, start_r, start_c int, notify chan int) {
 					}
 				}
 
-				// Quick check to see if field is still solvable:
-				for r := br1; r < br2; r++ {
-					if ss.rows[r] == 1 &&
-						(r == 0 || ss.rows[r-1] == 0) &&
-						(r == FieldHeight-1 || ss.rows[r+1] == 0) {
-						goto unsolvable
-					}
-				}
-				for c := bc1; c < bc2; c++ {
-					if ss.cols[c] == 1 &&
-						(c == 0 || ss.cols[c-1] == 0) &&
-						(c == FieldWidth-1 || ss.cols[c+1] == 0) {
-						goto unsolvable
-					}
-				}
-
-				// Solve recursively
 				if ship+1 == len(ShipLengths) {
 					result := ss.ships // make a copy
 					ss.results <- &result
-				} else if childNotify == nil {
-					placeShips(ss, ship+1, r1, bc2, nil)
 				} else {
-					go placeShips(copyState(ss), ship+1, r1, bc2, childNotify)
-					children++
+						// Quick check to see if field is still solvable:
+					if ShipLengths[ship+1] > 2 {
+						if !checkCounts(&ss.rows) || !checkCounts(&ss.cols) {
+							goto unsolvable
+						}
+					} else {
+						if !checkCounts2(&ss.rows) || !checkCounts2(&ss.cols) {
+							goto unsolvable
+						}
+					}
+
+					// Solve recursively
+					if childNotify == nil {
+						placeShips(ss, ship+1, r1, bc2, nil)
+					} else {
+						go placeShips(copyState(ss), ship+1, r1, bc2, childNotify)
+						children++
+					}
 				}
 
 				// Return claimed space
