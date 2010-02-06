@@ -83,5 +83,5 @@ func main() {
 	for i := 0; i < concurrency; i++ {
 		go generate()
 	}
-	<-make(chan int) // block forever
+	<-make(chan struct{}) // block forever
 }

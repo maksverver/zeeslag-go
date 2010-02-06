@@ -43,6 +43,7 @@ func main() {
 	colsFlag := flag.String("Cols", "", "Solve a field with the given column counts (requires -Rows as well)")
 	seedFlag := flag.Int64("Seed", 0, "Random seed (0 to pick at random)")
 	shotsFlag := flag.String("Shots", "-", "Specify previous shots, and request the next move")
+	flag.FloatVar(&game.TimeOut, "TimeOut", game.TimeOut, "Maximum time to spend on solving")
 	flag.Parse()
 
 	// Seed pseudo-random number generator:

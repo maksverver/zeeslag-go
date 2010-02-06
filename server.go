@@ -101,6 +101,7 @@ func main() {
 	host := flag.String("h", "", "hostname to bind")
 	port := flag.Int("p", 14000, "port to bind")
 	path := flag.String("r", "/player", "root path for player")
+	flag.FloatVar(&game.TimeOut, "t", 4.8, "move timeout")
 	flag.Parse()
 	addr := *host + ":" + strconv.Itoa(*port)
 

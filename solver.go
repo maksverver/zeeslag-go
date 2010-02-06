@@ -6,6 +6,7 @@ package game
 
 import "./util"
 import "rand"
+import "runtime"
 
 // solverstate describes a partial solution, used by placeShips:
 type solverState struct {
@@ -24,6 +25,7 @@ func copyState(ss *solverState) *solverState {
 	return &copy
 }
 
+// TODO: document this
 func checkCounts(counts []int) bool {
 	var total int
 	for _, count := range(counts) {
@@ -39,11 +41,12 @@ func checkCounts(counts []int) bool {
 	return total != 1
 }
 
+// TODO: document this
 func checkCounts2(counts []int) bool {
 	var total int
 	for _, count := range(counts) {
 		if count == 0 {
-			if total%2 != 0 {
+			if total&1 != 0 {
 				return false
 			}
 			total = 0
@@ -51,7 +54,7 @@ func checkCounts2(counts []int) bool {
 			total += count
 		}
 	}
-	return total%2 == 0
+	return total&1 == 0
 }
 
 // placeShips is the solver's workhorse. It takes a partially solved field with
@@ -63,19 +66,20 @@ func checkCounts2(counts []int) bool {
 // N.B. this routine should not return before all results from its subproblems
 // have been sent to the results channel. Specifically, if the routine spawns
 // new goroutines, it should wait for them to finish before returning!
-func placeShips(ss *solverState, ship, start_r, start_c int, notify chan int) {
+func placeShips(ss *solverState, ship, start_r, start_c int, notify chan <-struct{}) {
 
 	// Check if we need to restart placing ship at the top left corner:
 	if ship > 0 && ShipLengths[ship] != ShipLengths[ship-1] {
 		start_r = 0
 		start_c = 0
+		runtime.Gosched();
 	}
 
 	// Prepare to spawn child goroutines for solving subproblems in parallel:
-	var childNotify chan int
+	var childNotify chan struct{}
 	var children int
 	if ship < 1 { // HEURISTIC: spawn children for the toplevel ship only
-		childNotify = make(chan int, 40) // expect about 40 valid placements
+		childNotify = make(chan struct{}, 100) // expect less than 100 valid placements
 	}
 
 	// Search over all remaining positions for this type of ship:
@@ -191,13 +195,13 @@ func placeShips(ss *solverState, ship, start_r, start_c int, notify chan int) {
 		<-childNotify  // wait for child to finish
 	}
 	if notify != nil {
-		notify <- 1  // notify parent I'm done
+		notify <- struct{}{}  // notify parent I'm done
 	}
 }
 
 // GenerateSolutions writes all solution fields for the given row and column
 // counts to a channel (and then a nil value to terminate the list).
-func GenerateSolutions(rows RowCounts, cols ColCounts) chan *Field {
+func GenerateSolutions(rows RowCounts, cols ColCounts) <-chan *Field {
 	results := make(chan *Field, 1000000)  // expect lots of solutions
 	go func() {
 		state := solverState{rows: rows, cols: cols, results: results}
