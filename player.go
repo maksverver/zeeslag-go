@@ -6,7 +6,7 @@ import "time"
 
 var TimeOut float = 30
 
-var solutionsCache = make(map[string][]*Field) // caches known solutions
+var solutionsCache = make(map[string][]*Field)       // caches known solutions
 var solutionsNotify = make(map[string]chan []*Field) // notifies waiters
 var solutionsCacheMutex sync.Mutex
 
@@ -41,7 +41,8 @@ func getSolutions(rows RowCounts, cols ColCounts, maxWaitNs int64) []*Field {
 				for {
 					select {
 					case notify <- solutions:
-					default: break notifyWaiters
+					default:
+						break notifyWaiters
 					}
 				}
 			}()
@@ -50,9 +51,10 @@ func getSolutions(rows RowCounts, cols ColCounts, maxWaitNs int64) []*Field {
 		ticker := time.NewTicker(maxWaitNs)
 		select {
 		/* FIXME: race conditions here! Since we have unlocked the mutex
-		   before selecting, the solver code above may forget to notify us! */
+				   before selecting, the solver code above may forget to notify us! */
 		case solutions = <-notify: // solution found!
-		case <-ticker.C: solutions = nil // timer expired!
+		case <-ticker.C:
+			solutions = nil // timer expired!
 		}
 		ticker.Stop()
 	}
@@ -63,17 +65,17 @@ func getSolutions(rows RowCounts, cols ColCounts, maxWaitNs int64) []*Field {
 func Setup() *Field {
 	// FIXME: template is hard-coded!
 	// FIXME: I do have harder templates.
-	rows := RowCounts{2,0,4,0,2,0,3,0,7,0,5,0,3,0,4,0}
-	cols := ColCounts{1,1,2,2,2,3,2,2,2,2,2,2,2,2,2,1}
+	rows := RowCounts{2, 0, 4, 0, 2, 0, 3, 0, 7, 0, 5, 0, 3, 0, 4, 0}
+	cols := ColCounts{1, 1, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1}
 	solutions := ListSolutions(rows, cols)
 	return solutions[rand.Intn(len(solutions))]
 }
 
-func filterShots(solutions []*Field, shots [] Shot) []*Field {
+func filterShots(solutions []*Field, shots []Shot) []*Field {
 	count := 0
 	filtered := make([]*Field, len(solutions))
 loop:
-	for _, solution := range(solutions) {
+	for _, solution := range (solutions) {
 		for _, shot := range (shots) {
 			if solution[shot.R][shot.C] != shot.Hit {
 				continue loop
@@ -90,7 +92,7 @@ loop:
 // fast.
 func SimpleShoot(rows RowCounts, cols ColCounts, shots []Shot) (shootR, shootC int) {
 	var shot Field
-	for _, s := range(shots) {
+	for _, s := range (shots) {
 		shot[s.R][s.C] = true
 	}
 	var maxHit, hitCount int
@@ -115,9 +117,9 @@ func SimpleShoot(rows RowCounts, cols ColCounts, shots []Shot) (shootR, shootC i
 }
 
 // Counts how often cell r,c is hit in the given solution set:
-func CountHits(solutions []*Field, r, c int) int{
+func CountHits(solutions []*Field, r, c int) int {
 	var count int
-	for _, solution := range(solutions) {
+	for _, solution := range (solutions) {
 		if solution[r][c] {
 			count++
 		}

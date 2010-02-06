@@ -28,7 +28,7 @@ func copyState(ss *solverState) *solverState {
 // TODO: document this
 func checkCounts(counts []int) bool {
 	var total int
-	for _, count := range(counts) {
+	for _, count := range (counts) {
 		if count == 0 {
 			if total == 1 {
 				return false
@@ -44,7 +44,7 @@ func checkCounts(counts []int) bool {
 // TODO: document this
 func checkCounts2(counts []int) bool {
 	var total int
-	for _, count := range(counts) {
+	for _, count := range (counts) {
 		if count == 0 {
 			if total&1 != 0 {
 				return false
@@ -66,13 +66,13 @@ func checkCounts2(counts []int) bool {
 // N.B. this routine should not return before all results from its subproblems
 // have been sent to the results channel. Specifically, if the routine spawns
 // new goroutines, it should wait for them to finish before returning!
-func placeShips(ss *solverState, ship, start_r, start_c int, notify chan <-struct{}) {
+func placeShips(ss *solverState, ship, start_r, start_c int, notify chan<- struct{}) {
 
 	// Check if we need to restart placing ship at the top left corner:
 	if ship > 0 && ShipLengths[ship] != ShipLengths[ship-1] {
 		start_r = 0
 		start_c = 0
-		runtime.Gosched();
+		runtime.Gosched()
 	}
 
 	// Prepare to spawn child goroutines for solving subproblems in parallel:
@@ -149,7 +149,7 @@ func placeShips(ss *solverState, ship, start_r, start_c int, notify chan <-struc
 					result := ss.ships // make a copy
 					ss.results <- &result
 				} else {
-						// Quick check to see if field is still solvable:
+					// Quick check to see if field is still solvable:
 					if ShipLengths[ship+1] > 2 {
 						if !checkCounts(&ss.rows) || !checkCounts(&ss.cols) {
 							goto unsolvable
@@ -192,17 +192,17 @@ func placeShips(ss *solverState, ship, start_r, start_c int, notify chan <-struc
 	}
 
 	for ; children > 0; children-- {
-		<-childNotify  // wait for child to finish
+		<-childNotify // wait for child to finish
 	}
 	if notify != nil {
-		notify <- struct{}{}  // notify parent I'm done
+		notify <- struct{}{} // notify parent I'm done
 	}
 }
 
 // GenerateSolutions writes all solution fields for the given row and column
 // counts to a channel (and then a nil value to terminate the list).
 func GenerateSolutions(rows RowCounts, cols ColCounts) <-chan *Field {
-	results := make(chan *Field, 1000000)  // expect lots of solutions
+	results := make(chan *Field, 1000000) // expect lots of solutions
 	go func() {
 		state := solverState{rows: rows, cols: cols, results: results}
 		placeShips(&state, 0, 0, 0, nil)
@@ -227,16 +227,12 @@ func ListSolutions(rows RowCounts, cols ColCounts) (solutions []*Field) {
 	return
 }
 
-func EncodeCoords(r, c int) uint8 {
-	return uint8(16*r + c)
-}
+func EncodeCoords(r, c int) uint8 { return uint8(16*r + c) }
 
-func DecodeCoords(f uint8) (int, int) {
-	return int(f)/16, int(f)%16
-}
+func DecodeCoords(f uint8) (int, int) { return int(f) / 16, int(f) % 16 }
 
 type Strategy struct {
-	Shots []uint8
+	Shots         []uint8
 	IfHit, IfMiss *Strategy
 }
 
@@ -256,7 +252,7 @@ func createStrategy(fields []*Field, fired *Field) *Strategy {
 	for r := 0; r < FieldHeight; r++ {
 		for c := 0; c < FieldWidth; c++ {
 			if !fired[r][c] {
-				for _, field := range(fields) {
+				for _, field := range (fields) {
 					if field[r][c] {
 						hit[r][c]++
 					} else {
@@ -298,12 +294,12 @@ func createStrategy(fields []*Field, fired *Field) *Strategy {
 			}
 		}
 	}
-	if (maxHit == 0) {
+	if maxHit == 0 {
 		// No more hits possible; just return remaining shots:
 		return &Strategy{shots, nil, nil}
 	}
-	
-	// Determine where to fire at next:	
+
+	// Determine where to fire at next:
 	fireAt := opts[rand.Intn(len(opts))]
 	shots[i] = fireAt
 	fr, fc := DecodeCoords(fireAt)
@@ -345,5 +341,5 @@ func getExpectedScore(strategy *Strategy) (float, float) {
 	}
 	s1, w1 := getExpectedScore(strategy.IfHit)
 	s2, w2 := getExpectedScore(strategy.IfMiss)
-	return float(len(strategy.Shots)) + (w1*s1 + w2*s2)/(w1+w2), w1 + w2
+	return float(len(strategy.Shots)) + (w1*s1+w2*s2)/(w1+w2), w1 + w2
 }

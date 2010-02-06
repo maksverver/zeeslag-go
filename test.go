@@ -16,7 +16,7 @@ func printIndent(indent int) {
 
 func printStrategy(strategy *game.Strategy, indent int) {
 	printIndent(indent)
-	for i, f := range(strategy.Shots) {
+	for i, f := range (strategy.Shots) {
 		if i > 0 {
 			fmt.Print(" ")
 		}
@@ -26,12 +26,12 @@ func printStrategy(strategy *game.Strategy, indent int) {
 	if strategy.IfHit != nil {
 		printIndent(indent)
 		fmt.Println("if hit:")
-		printStrategy(strategy.IfHit, indent + 4)
+		printStrategy(strategy.IfHit, indent+4)
 	}
 	if strategy.IfMiss != nil {
 		printIndent(indent)
 		fmt.Println("if miss:")
-		printStrategy(strategy.IfMiss, indent + 4)
+		printStrategy(strategy.IfMiss, indent+4)
 	}
 }
 
