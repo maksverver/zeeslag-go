@@ -69,13 +69,60 @@ func Setup() *Field {
 	return solutions[rand.Intn(len(solutions))]
 }
 
-func matchShots(shots []Shot, field *Field) bool {
-	for _, shot := range (shots) {
-		if field[shot.R][shot.C] != shot.Hit {
-			return false
+func filterShots(solutions []*Field, shots [] Shot) []*Field {
+	count := 0
+	filtered := make([]*Field, len(solutions))
+loop:
+	for _, solution := range(solutions) {
+		for _, shot := range (shots) {
+			if solution[shot.R][shot.C] != shot.Hit {
+				continue loop
+			}
+		}
+		filtered[count] = solution
+		count++
+	}
+	return filtered[0:count]
+}
+
+// SimpleShoot fires at a cell with a maximum probability of hitting, estimating
+// this probability as rows[r] + cols[c]. This algorithm is simplistic, but very
+// fast.
+func SimpleShoot(rows RowCounts, cols ColCounts, shots []Shot) (shootR, shootC int) {
+	var shot Field
+	for _, s := range(shots) {
+		shot[s.R][s.C] = true
+	}
+	var maxHit, hitCount int
+	for r := 0; r < FieldHeight; r++ {
+		for c := 0; c < FieldWidth; c++ {
+			if !shot[r][c] && rows[r] > 0 && cols[c] > 0 {
+				hit := rows[r] + cols[c]
+				if hit > maxHit {
+					maxHit = hit
+					hitCount = 0
+				}
+				if hit == maxHit {
+					hitCount++
+					if rand.Intn(hitCount) == 0 {
+						shootR, shootC = r, c
+					}
+				}
+			}
 		}
 	}
-	return true
+	return
+}
+
+// Counts how often cell r,c is hit in the given solution set:
+func CountHits(solutions []*Field, r, c int) int{
+	var count int
+	for _, solution := range(solutions) {
+		if solution[r][c] {
+			count++
+		}
+	}
+	return count
 }
 
 // Shoot returns the coordinates of an unoccupied cell to fire at
@@ -86,23 +133,33 @@ func Shoot(rows RowCounts, cols ColCounts, shots []Shot) (shootR, shootC int) {
 		shot[s.R][s.C] = true
 	}
 
-	// Count how often each cell is hit:
+	// Find all solutions:
 	solutions := getSolutions(rows, cols, int64(TimeOut*1e9))
 	if solutions == nil {
-		// TODO: use heuristic here!
-		return 0, 0
+		// Solver timed out; use a less sophisticated algorithm:
+		return SimpleShoot(rows, cols, shots)
 	}
+	solutions = filterShots(solutions, shots)
 
+	// Count how often each (unfired) cell is hit:
 	var hits [FieldHeight][FieldWidth]int
-	for _, sol := range(solutions) {
-		if matchShots(shots, sol) {
-			for r, row := range (*sol) {
-				for c, hit := range (row) {
-					if hit {
-						hits[r][c]++
-					}
+	{
+		var children int
+		notify := make(chan struct{}, FieldHeight*FieldWidth)
+		for r := 0; r < FieldHeight; r++ {
+			for c := 0; c < FieldWidth; c++ {
+				if !shot[r][c] && rows[r] > 0 && cols[c] > 0 {
+					children++
+					go func(r, c int) {
+						hits[r][c] = CountHits(solutions, r, c)
+						notify <- struct{}{}
+					}(r, c)
 				}
 			}
+		}
+		for children > 0 {
+			<-notify
+			children--
 		}
 	}
 
@@ -110,13 +167,12 @@ func Shoot(rows RowCounts, cols ColCounts, shots []Shot) (shootR, shootC int) {
 	var cnt, max int
 	for r, row := range (hits) {
 		for c, hit := range (row) {
-			if !shot[r][c] && hit >= max {
-				if hit > max {
-					max = hit
-					cnt = 1
-				} else {
-					cnt++
-				}
+			if hit > max {
+				max = hit
+				cnt = 0
+			}
+			if hit == max {
+				cnt++
 				if rand.Intn(cnt) == 0 {
 					shootR, shootC = r, c
 				}
