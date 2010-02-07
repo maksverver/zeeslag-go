@@ -35,6 +35,67 @@ func printStrategy(strategy *game.Strategy, indent int) {
 	}
 }
 
+type caseDepth struct {
+	field game.Field
+	depth int
+}
+
+func calcCases(field *game.Field, strategy *game.Strategy, depth int, results chan *caseDepth) {
+	for _, shot := range(strategy.Shots) {
+		r,c := game.DecodeCoords(shot)
+		field[r][c] = true
+	}
+	depth += len(strategy.Shots)
+	if strategy.IfHit != nil {
+		calcCases(field, strategy.IfHit, depth, results)
+	} else {
+		results <- &caseDepth{*field, depth}
+	}
+	if strategy.IfMiss != nil {
+		r,c := game.DecodeCoords(strategy.Shots[len(strategy.Shots) - 1])
+		field[r][c] = false
+		calcCases(field, strategy.IfMiss, depth, results)
+	}
+	for _, shot := range(strategy.Shots) {
+		r,c := game.DecodeCoords(shot)
+		field[r][c] = false
+	}
+}
+
+func generateCases(strategy *game.Strategy) chan *caseDepth {
+	results := make(chan *caseDepth, 100)
+	go func() {
+		calcCases(&game.Field{}, strategy, 0, results)
+		results <- nil
+	}()
+	return results
+}
+
+func simpleDifficulty(rows *game.RowCounts, cols *game.ColCounts, field *game.Field) float {
+	var dif, cnt, tot float
+	for r := 0; r < game.FieldHeight; r++ {
+		for c := 0; c < game.FieldWidth; c++ {
+			if field[r][c] {
+				val := float(rows[r] + cols[c])
+				if val > dif {
+					dif = val
+				}
+			}
+		}
+	}
+	for r := 0; r < game.FieldHeight; r++ {
+		for c := 0; c < game.FieldWidth; c++ {
+			if float(rows[r] + cols[c]) == dif {
+				tot++
+				if field[r][c] {
+					cnt++
+				}
+			}
+		}
+	}
+	return dif + cnt/(tot + 1)
+}
+
 func main() {
 	// Parse command line arguments:
 	setupFlag := flag.Bool("Setup", false, "Generate a starting field")
@@ -96,7 +157,17 @@ func main() {
 		fmt.Println(len(solutions), "solutions found.")
 		strategy := game.CreateStrategy(solutions)
 		fmt.Println("Expected score:", game.GetExpectedScore(strategy))
-		fmt.Println("Worst-case score:", game.GetMaximumScore(strategy))
+		wc := game.GetMaximumScore(strategy)
+		fmt.Println("Worst-case score:", wc)
+		fmt.Println("Bad cases:")
+		ch := generateCases(strategy)
+		for cd := <- ch; cd != nil; cd = <- ch {
+			if wc - cd.depth <= 3 {
+				// first column: optimal search depth, the higher the better
+				// second column: max(rows[r]+cols[c]) of cells containing ships, the lower the better
+				fmt.Println(cd.depth, simpleDifficulty(&rows, &cols, &cd.field), game.FormatShips(&cd.field))
+			}
+		}
 	} else {
 		shots := game.ParseShots(*shotsFlag)
 		if shots == nil {
